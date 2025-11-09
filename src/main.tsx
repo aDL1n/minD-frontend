@@ -1,16 +1,15 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { Provider } from '@/components/ui/provider.tsx'
-import './index.css'
+import { Toaster } from "@/components/ui/toaster"
 import App from './App.tsx'
-import { ClientOnly } from '@chakra-ui/react'
+import './index.css'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <Provider>
-      <ClientOnly>
+        <Toaster />
         <App />
-      </ClientOnly>
     </Provider>
   </StrictMode>,
 )

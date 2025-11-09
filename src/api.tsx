@@ -1,4 +1,5 @@
 import axios from "axios";
+import { toaster } from "./components/ui/toaster";
 
 export interface ChatMessage {
     id?: number;
@@ -6,8 +7,13 @@ export interface ChatMessage {
     timestamp?: number;
 }
 
+
 export class Api {
     private baseUrl = "http://localhost:8080/api";
+
+    constructor() {
+        this.getOnlineCount();
+    }
 
     async getMessages(limit: number): Promise<ChatMessage[]> {
         const response = await axios.get<ChatMessage[]>(`${this.baseUrl}/message/get`, {
@@ -72,5 +78,19 @@ export class Api {
         }
 
         return [];
+    }
+
+    async getOnlineCount(): Promise<Number> {
+        try {
+            const response = await axios.get(`${this.baseUrl}/`);
+            return response.data;
+        } catch (e) {
+            toaster.create({
+            description: "Не удалось подключится к серверу",
+            type: "error",
+            })
+        }
+
+        return 0;
     }
 }
