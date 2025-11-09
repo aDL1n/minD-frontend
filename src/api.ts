@@ -7,7 +7,6 @@ export interface ChatMessage {
     timestamp?: number;
 }
 
-
 export class Api {
     private baseUrl = "http://localhost:8080/api";
 

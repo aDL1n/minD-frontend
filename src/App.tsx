@@ -1,87 +1,71 @@
-import { Box, Center, ClientOnly, Container, Flex, For, Group, Heading, IconButton, Input, ScrollArea } from "@chakra-ui/react";
+import { Box, Center, Container, Flex, For, Group, IconButton, Input, ScrollArea } from "@chakra-ui/react";
 import { FaAngleDoubleRight } from "react-icons/fa";
-import { useColorMode, useColorModeValue } from "./components/ui/color-mode";
-import { LuSun, LuMoon } from "react-icons/lu";
-import { Api, type ChatMessage } from "./api";
+import { useColorModeValue } from "@/components/ui/color-mode";
+import { Api, type ChatMessage } from "@/api";
 import { useCallback, useEffect, useRef, useState } from "react";
+import Message from "@/components/app/Message";
+import Header from "@/components/app/Header";
 
 const App = () => {
-  const { toggleColorMode, colorMode } = useColorMode()
+  const api: Api = new Api();
 
   const background = useColorModeValue("#F1F0E8", "#1c1917")
   const border = useColorModeValue("#5b6568ff", "#4a413b")
-  const heading = useColorModeValue("#20353bff", "#e6dfd6")
-  const messageBackground = useColorModeValue("rgb(229, 225, 218)", "#2a2623")
-  const messageBorder = useColorModeValue("#5f5b59ff", "#4a413b")
   const shadow = useColorModeValue("rgba(137, 168, 178, 0.45)", "rgba(17, 16, 14, 0.99)")
-  const messageText = useColorModeValue("#3b4b50ff", "#e6dfd6")
   const inputBackground = useColorModeValue("rgb(229, 225, 218)", "rgba(80, 75, 70, 0.4)")
+  const inputColor = useColorModeValue("#3b4b50ff", "#e6dfd6")
   const buttonBackground = useColorModeValue("rgba(137, 168, 178, 0.5)", "rgba(22, 15, 6, 0.76)")
   const iconColor = useColorModeValue("#5f5b59ff", "#e6dfd6");
-
+  
   document.getElementById('root')!.style.backgroundColor = background;
-
+  
   const [messages, setMessages] = useState<ChatMessage[]>([]);
 
-
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [hasMoreHistory, setHasMoreHistory] = useState(true);
+  
   const inputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const api: Api = new Api();
+  const previousScrollHeightRef = useRef(0);
+  const viewportRef = useRef<HTMLDivElement>(null);
 
-  function formatUnixTimestamp(unixTimestamp: number): string {
-    const date = new Date(unixTimestamp);
-
-    const hours = date.getHours().toString().padStart(2, '0');
-    const minutes = date.getMinutes().toString().padStart(2, '0');
-    const seconds = date.getSeconds().toString().padStart(2, '0');
-    const day = date.getDate().toString().padStart(2, '0');
-    const month = (date.getMonth() + 1).toString().padStart(2, '0');
-
-    return `${hours}:${minutes}:${seconds}  ${day}.${month}`;
-  }
-
+  
   useEffect(() => {
     api.getMessages(10).then((data: ChatMessage[]) => {
       setMessages(data);
-      
     });
 
     const eventSource = api.subscribeToNewMessages((msg) => {
       setMessages((prev) => [...prev, msg]);
     });
 
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+
     return () => {
       eventSource.close();
     };
 
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-
   }, []);
 
-
-  const sendMessage = async () => {
-    if (!inputRef.current?.value) return;
-    const msg: ChatMessage = { message: inputRef.current.value };
-    await api.sendMessage(msg);
-    inputRef.current.value = "";
-  };
-
-  const previousScrollHeightRef = useRef(0);
-  const viewportRef = useRef<HTMLDivElement>(null);
-  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
-  const [hasMoreHistory, setHasMoreHistory] = useState(true);
-
+  useEffect(() => {
+    if (!isLoadingHistory && previousScrollHeightRef.current > 0 && viewportRef.current) {
+      const currentScrollHeight = viewportRef.current.scrollHeight;
+      viewportRef.current.scrollTo({ top: currentScrollHeight - previousScrollHeightRef.current });
+      previousScrollHeightRef.current = 0;
+    }
+  }, [messages, isLoadingHistory]);
+  
   const fetchHistory = useCallback(async () => {
     if (isLoadingHistory || !hasMoreHistory) return;
-
+    
     setIsLoadingHistory(true);
-
+    
     const oldestMessageId = messages.length > 0 ? messages[0].id : undefined;
-
+    
     if (oldestMessageId !== undefined) {
       const oldMessages = await api.fetchMessageHistory(10, oldestMessageId);
-
+      
       if (oldMessages.length === 0) {
         setHasMoreHistory(false);
       } else {
@@ -91,18 +75,10 @@ const App = () => {
     } else {
       setHasMoreHistory(false);
     }
-
+    
     setIsLoadingHistory(false);
   }, [isLoadingHistory, hasMoreHistory, messages]);
-
-  useEffect(() => {
-    if (!isLoadingHistory && previousScrollHeightRef.current > 0 && viewportRef.current) {
-      const currentScrollHeight = viewportRef.current.scrollHeight;
-      viewportRef.current.scrollTo({ top: currentScrollHeight - previousScrollHeightRef.current });
-      previousScrollHeightRef.current = 0;
-    }
-  }, [messages, isLoadingHistory]);
-
+  
   const handleScroll = (event: React.UIEvent<HTMLDivElement>) => {
     const { scrollTop } = event.currentTarget;
     if (scrollTop === 0) {
@@ -110,6 +86,13 @@ const App = () => {
     }
   };
 
+  const sendMessage = async () => {
+    if (!inputRef.current?.value) return;
+    const msg: ChatMessage = { message: inputRef.current.value };
+    await api.sendMessage(msg);
+    inputRef.current.value = "";
+  };
+  
   return (
     <>
       <Center>
@@ -121,58 +104,7 @@ const App = () => {
             height="100%"
           >
             {/* Header */}
-            <Box
-              borderBottomColor={border}
-              borderBottomStyle="solid"
-              borderBottomWidth="2px"
-              display="flex"
-            >
-              <Heading
-                size="5xl"
-                fontFamily="Jun"
-                borderRightColor={border}
-                borderRightStyle="solid"
-                borderRightWidth="2px"
-                width="calc(8rem + 2px)"
-                textAlign="center"
-
-                backgroundImage={`radial-gradient(${inputBackground} 1px, transparent 1px)`}
-                backgroundSize="12px 12px"
-                color={heading}
-              >
-                minD
-              </Heading>
-              <Box
-                flex="1"
-                backgroundImage={`
-                    repeating-linear-gradient(
-                      45deg,
-                      ${inputBackground} 0,
-                      ${inputBackground} 2px,
-                      transparent 1px,
-                      transparent 10px
-                    )
-                  `}
-                display="flex"
-                justifyContent="flex-end"
-                alignItems="center"
-              >
-                <ClientOnly>
-                  <IconButton
-                    onClick={toggleColorMode}
-                    variant="outline"
-                    size="sm"
-                    borderRadius="0"
-                    backgroundColor={messageBackground}
-                    borderColor={border}
-                    borderWidth="2px"
-                    marginInlineEnd="24px"
-                  >
-                    {colorMode === "light" ? <LuSun /> : <LuMoon />}
-                  </IconButton>
-                </ClientOnly>
-              </Box>
-            </Box>
+            <Header />
 
             {/* Main */}
             <Flex
@@ -213,30 +145,7 @@ const App = () => {
                       <ScrollArea.Content width="100%" display="flex" flexDirection="column" alignItems="flex-start" spaceY="32px">
                         <For each={messages} fallback={[]}>
                           {(message, id) => (
-                            <Box
-                              key={id}
-                              backgroundColor={messageBackground}
-                              border="solid 2px"
-                              borderColor={messageBorder}
-                              boxShadow={`3px 3px 0px 0px ${shadow}`}
-                              padding="12px"
-                              marginInlineEnd="10px"
-                              wordBreak="break-word"
-                              color={messageText}
-                              fontSize="l"
-                              width="auto"
-                            >
-                              {message.message}
-                              <Box
-                                color="gray.500"
-                                fontSize="0.7rem"
-                                display="flex"
-                                justifyContent="flex-end"
-                                width="100%"
-                              >
-                                {message.timestamp && formatUnixTimestamp(message.timestamp)}
-                              </Box>
-                            </Box>
+                            <Message message={message} key={id} />
                           )}
                         </For>
                         <div ref={messagesEndRef} />
@@ -259,7 +168,7 @@ const App = () => {
                     borderStyle="solid"
                     borderColor={border}
                     borderWidth="2px"
-                    color={messageText}
+                    color={inputColor}
                     fontSize="md"
                   />
                   <IconButton
