@@ -3,8 +3,7 @@ import {Box, ClientOnly, Heading, IconButton} from "@chakra-ui/react";
 import {LuMoon, LuSun } from "react-icons/lu";
 import { useColorMode, useColorModeValue } from "@/components/ui/color-mode";
 
-
-const Header: FC= () => {
+const Header: FC = () => {
     const { toggleColorMode, colorMode } = useColorMode()
 
     const border = useColorModeValue("#5b6568ff", "#4a413b")

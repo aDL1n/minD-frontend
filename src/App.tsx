@@ -16,21 +16,20 @@ const App = () => {
   const inputColor = useColorModeValue("#3b4b50ff", "#e6dfd6")
   const buttonBackground = useColorModeValue("rgba(137, 168, 178, 0.5)", "rgba(22, 15, 6, 0.76)")
   const iconColor = useColorModeValue("#5f5b59ff", "#e6dfd6");
-  
+
   document.getElementById('root')!.style.backgroundColor = background;
-  
+
   const [messages, setMessages] = useState<ChatMessage[]>([]);
 
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [hasMoreHistory, setHasMoreHistory] = useState(true);
-  
+
   const inputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const previousScrollHeightRef = useRef(0);
   const viewportRef = useRef<HTMLDivElement>(null);
 
-  
   useEffect(() => {
     api.getMessages(10).then((data: ChatMessage[]) => {
       setMessages(data);
@@ -55,17 +54,17 @@ const App = () => {
       previousScrollHeightRef.current = 0;
     }
   }, [messages, isLoadingHistory]);
-  
+
   const fetchHistory = useCallback(async () => {
     if (isLoadingHistory || !hasMoreHistory) return;
-    
+
     setIsLoadingHistory(true);
-    
+
     const oldestMessageId = messages.length > 0 ? messages[0].id : undefined;
-    
+
     if (oldestMessageId !== undefined) {
       const oldMessages = await api.fetchMessageHistory(10, oldestMessageId);
-      
+
       if (oldMessages.length === 0) {
         setHasMoreHistory(false);
       } else {
@@ -75,10 +74,10 @@ const App = () => {
     } else {
       setHasMoreHistory(false);
     }
-    
+
     setIsLoadingHistory(false);
   }, [isLoadingHistory, hasMoreHistory, messages]);
-  
+
   const handleScroll = (event: React.UIEvent<HTMLDivElement>) => {
     const { scrollTop } = event.currentTarget;
     if (scrollTop === 0) {
@@ -92,7 +91,7 @@ const App = () => {
     await api.sendMessage(msg);
     inputRef.current.value = "";
   };
-  
+
   return (
     <>
       <Center>
@@ -143,11 +142,9 @@ const App = () => {
                     <ScrollArea.Viewport ref={viewportRef} onScroll={handleScroll}
                     >
                       <ScrollArea.Content width="100%" display="flex" flexDirection="column" alignItems="flex-start" spaceY="32px">
-                        <For each={messages} fallback={[]}>
-                          {(message, id) => (
-                            <Message message={message} key={id} />
-                          )}
-                        </For>
+                        {Array.isArray(messages) && messages.map((message, id) => (
+                          <Message message={message} key={id} />
+                        ))}
                         <div ref={messagesEndRef} />
                       </ScrollArea.Content>
                     </ScrollArea.Viewport>
